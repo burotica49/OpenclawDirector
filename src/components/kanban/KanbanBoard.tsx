@@ -15,6 +15,8 @@ import { useStore } from '../../store'
 import { KanbanColumn } from './KanbanColumn'
 import { TaskCard } from './TaskCard'
 import { CreateTaskModal } from './CreateTaskModal'
+import { CronColumn } from './CronColumn'
+import { CronJobModal } from './CronJobModal'
 import type { Task, TaskStatus } from '../../types'
 import { t } from '../../i18n'
 
@@ -26,9 +28,10 @@ const COLUMNS: { id: TaskStatus; label: string; accent: string }[] = [
 ]
 
 export const KanbanBoard: FC = () => {
-  const { tasks, updateTaskStatus } = useStore()
+  const { tasks, updateTaskStatus, activeAgentId } = useStore()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [creating, setCreating] = useState(false)
+  const [creatingCron, setCreatingCron] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -36,10 +39,11 @@ export const KanbanBoard: FC = () => {
     }),
   )
 
-  const tasksByCol = (col: TaskStatus) => tasks.filter((t) => t.status === col)
+  const visibleTasks = activeAgentId ? tasks.filter((t) => t.agentId === activeAgentId) : tasks
+  const tasksByCol = (col: TaskStatus) => visibleTasks.filter((t) => t.status === col)
 
   const handleDragStart = (e: DragStartEvent) => {
-    const task = tasks.find((t) => t.id === e.active.id)
+    const task = visibleTasks.find((t) => t.id === e.active.id)
     setActiveTask(task ?? null)
   }
 
@@ -52,17 +56,17 @@ export const KanbanBoard: FC = () => {
     const overId = over.id as string
 
     if (COLUMNS.some((c) => c.id === overId)) {
-      const task = tasks.find((t) => t.id === activeId)
+      const task = visibleTasks.find((t) => t.id === activeId)
       if (task && task.status !== overId) {
         updateTaskStatus(activeId, overId as TaskStatus)
       }
       return
     }
 
-    const overTask = tasks.find((t) => t.id === overId)
+    const overTask = visibleTasks.find((t) => t.id === overId)
     if (!overTask) return
 
-    const activeTaskFound = tasks.find((t) => t.id === activeId)
+    const activeTaskFound = visibleTasks.find((t) => t.id === activeId)
     if (!activeTaskFound) return
 
     if (activeTaskFound.status !== overTask.status) {
@@ -70,7 +74,7 @@ export const KanbanBoard: FC = () => {
     }
   }
 
-  const totalActive = tasks.filter((t) => t.status === 'in_progress').length
+  const totalActive = visibleTasks.filter((t) => t.status === 'in_progress').length
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
@@ -86,15 +90,27 @@ export const KanbanBoard: FC = () => {
           )}
         </div>
         <div className="flex-1 hidden sm:block" />
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-medium
-            bg-indigo-500 hover:bg-indigo-400 text-white transition-all w-full sm:w-auto min-h-[44px] sm:min-h-0"
-        >
-          <Plus size={13} />
-          {t('kanban.new_task')}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-medium
+              bg-indigo-500 hover:bg-indigo-400 text-white transition-all w-full sm:w-auto min-h-[44px] sm:min-h-0"
+          >
+            <Plus size={13} />
+            {t('kanban.new_task')}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCreatingCron(true)}
+            className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-medium
+              bg-indigo-500 hover:bg-indigo-400 text-white transition-all w-full sm:w-auto min-h-[44px] sm:min-h-0"
+          >
+            <Plus size={13} />
+            {t('kanban.cron.add_top')}
+          </button>
+        </div>
       </div>
 
       <DndContext
@@ -114,6 +130,7 @@ export const KanbanBoard: FC = () => {
                 tasks={tasksByCol(col.id)}
               />
             ))}
+            <CronColumn onCreate={() => setCreatingCron(true)} />
           </div>
         </div>
 
@@ -121,6 +138,7 @@ export const KanbanBoard: FC = () => {
       </DndContext>
 
       {creating && <CreateTaskModal onClose={() => setCreating(false)} />}
+      {creatingCron && <CronJobModal onClose={() => setCreatingCron(false)} />}
     </div>
   )
 }

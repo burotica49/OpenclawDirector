@@ -6,6 +6,7 @@ import type {
   Agent,
   ChatMessage,
   ConnectionStatus,
+  CronJob,
   GatewaySessionRow,
   ModelOption,
   Task,
@@ -32,6 +33,10 @@ type ModelsListResult = {
 
 type SessionsListResult = {
   sessions?: GatewaySessionRow[]
+}
+
+type CronListResult = {
+  jobs?: CronJob[]
 }
 
 function inferModelTier(id: string): ModelOption['tier'] {
@@ -110,6 +115,9 @@ interface Store {
   tasks: Task[]
   kanbanLoaded: boolean
 
+  cronJobs: CronJob[]
+  cronLoaded: boolean
+
   activeAgentId: string | null
   activeSessionKey: string | null
   selectedModel: string
@@ -130,12 +138,17 @@ interface Store {
 
   bootstrapGateway: () => Promise<void>
   refreshOpenClawSessions: () => Promise<void>
+  refreshCronJobs: () => Promise<void>
 
   loadKanbanFromDb: () => Promise<void>
   createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateTaskStatus: (taskId: string, status: TaskStatus) => void
   deleteTask: (taskId: string) => void
   startTask: (taskId: string) => Promise<void>
+
+  addCronJob: (job: Omit<CronJob, 'jobId'>) => Promise<void>
+  updateCronJob: (jobId: string, patch: Partial<CronJob>) => Promise<void>
+  removeCronJob: (jobId: string) => Promise<void>
 
   setActiveAgent: (agentId: string) => void
   setActiveSessionKey: (sessionKey: string | null) => Promise<void>
@@ -214,6 +227,8 @@ export const useStore = create<Store>((set, get) => ({
   openClawSessions: [],
   tasks: [],
   kanbanLoaded: false,
+  cronJobs: [],
+  cronLoaded: false,
   activeAgentId: SEED_AGENTS[0].id,
   activeSessionKey: null,
   selectedModel: CLAUDE_MODELS[1].id,
@@ -507,6 +522,7 @@ export const useStore = create<Store>((set, get) => ({
       console.error('[OpenClaw] agents/models', e)
     }
     await get().refreshOpenClawSessions()
+    await get().refreshCronJobs()
   },
 
   refreshOpenClawSessions: async () => {
@@ -544,6 +560,17 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
+  refreshCronJobs: async () => {
+    try {
+      const res = await openClawWS.request<CronListResult | CronJob[]>('cron.list', {})
+      const jobs = Array.isArray(res) ? res : (res.jobs ?? [])
+      set({ cronJobs: jobs, cronLoaded: true })
+    } catch (e) {
+      console.warn('[OpenClaw] cron.list', e)
+      set({ cronLoaded: true })
+    }
+  },
+
   loadKanbanFromDb: async () => {
     try {
       const tasks = await loadKanbanTasks()
@@ -552,6 +579,21 @@ export const useStore = create<Store>((set, get) => ({
       console.warn('[Kanban sqlite] load failed', e)
       set({ kanbanLoaded: true })
     }
+  },
+
+  addCronJob: async (job) => {
+    await openClawWS.request('cron.add', job)
+    await get().refreshCronJobs()
+  },
+
+  updateCronJob: async (jobId, patch) => {
+    await openClawWS.request('cron.update', { jobId, patch })
+    await get().refreshCronJobs()
+  },
+
+  removeCronJob: async (jobId) => {
+    await openClawWS.request('cron.remove', { jobId })
+    await get().refreshCronJobs()
   },
 
   createTask: (taskData) => {

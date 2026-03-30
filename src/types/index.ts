@@ -64,6 +64,54 @@ export interface KanbanColumn {
   tasks: Task[]
 }
 
+// ─── Cron (Gateway scheduler) ────────────────────────────────────────────────
+
+export type CronSchedule =
+  | { kind: 'at'; at: string; tz?: string; staggerMs?: number }
+  | { kind: 'every'; everyMs: number; staggerMs?: number }
+  | { kind: 'cron'; expr: string; tz?: string; staggerMs?: number }
+
+export type CronSessionTarget = 'main' | 'isolated' | 'current' | `session:${string}`
+export type CronWakeMode = 'now' | 'next-heartbeat'
+
+export type CronPayload =
+  | { kind: 'systemEvent'; text: string }
+  | {
+      kind: 'agentTurn'
+      message: string
+      model?: string
+      thinking?: string
+      timeoutSeconds?: number
+      lightContext?: boolean
+    }
+
+export type CronDeliveryMode = 'none' | 'announce' | 'webhook'
+export type CronDeliveryChannel = 'last' | string
+
+export interface CronDelivery {
+  mode: CronDeliveryMode
+  channel?: CronDeliveryChannel
+  to?: string
+  bestEffort?: boolean
+}
+
+export interface CronJob {
+  jobId: string
+  name: string
+  description?: string
+  agentId?: string
+  enabled?: boolean
+  schedule: CronSchedule
+  sessionTarget: CronSessionTarget
+  wakeMode?: CronWakeMode
+  payload: CronPayload
+  delivery?: CronDelivery
+  deleteAfterRun?: boolean
+  // Champs optionnels (selon version gateway)
+  nextRunAt?: string | number
+  lastRunAt?: string | number
+}
+
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
 export type MessageRole = 'user' | 'assistant' | 'system'

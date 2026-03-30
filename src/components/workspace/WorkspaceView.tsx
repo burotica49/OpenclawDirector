@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Download,
   FileText,
@@ -38,30 +38,45 @@ export const WorkspaceView: FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [listError, setListError] = useState<string | null>(null)
 
+  const loadSeqRef = useRef(0)
+  const fileSeqRef = useRef(0)
+
   const loadList = useCallback(async () => {
     if (!activeAgentId || connectionStatus !== 'connected') {
       setListError('Sélectionnez un agent et connectez-vous à la gateway.')
       return
     }
+    const seq = ++loadSeqRef.current
     setLoadingList(true)
     setListError(null)
     try {
       const { paths, workspaceRoot: root } = await listWorkspaceFiles(activeAgentId)
+      if (seq !== loadSeqRef.current) return
       setFiles(paths)
       setWorkspaceRoot(root)
     } catch (e) {
+      if (seq !== loadSeqRef.current) return
       const msg = e instanceof Error ? e.message : String(e)
       setListError(msg)
       setFiles([])
       setWorkspaceRoot('')
     } finally {
-      setLoadingList(false)
+      if (seq === loadSeqRef.current) setLoadingList(false)
     }
   }, [activeAgentId, connectionStatus])
 
   useEffect(() => {
     void loadList()
   }, [loadList])
+
+  useEffect(() => {
+    loadSeqRef.current += 1
+    fileSeqRef.current += 1
+    setSelectedPath(null)
+    setEditorContent('')
+    setDirty(false)
+    setError(null)
+  }, [activeAgentId])
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase()
@@ -71,19 +86,23 @@ export const WorkspaceView: FC = () => {
 
   const openFile = async (path: string) => {
     if (!activeAgentId) return
+    const agentId = activeAgentId
+    const seq = ++fileSeqRef.current
     setSelectedPath(path)
     setLoadingFile(true)
     setError(null)
     setDirty(false)
     try {
-      const text = await readWorkspaceFile(activeAgentId, path)
+      const text = await readWorkspaceFile(agentId, path)
+      if (seq !== fileSeqRef.current) return
       setEditorContent(text)
     } catch (e) {
+      if (seq !== fileSeqRef.current) return
       const msg = e instanceof Error ? e.message : String(e)
       setError(msg)
       setEditorContent('')
     } finally {
-      setLoadingFile(false)
+      if (seq === fileSeqRef.current) setLoadingFile(false)
     }
   }
 
