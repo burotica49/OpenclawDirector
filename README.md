@@ -45,20 +45,3 @@ Par défaut Vite choisit un port disponible (souvent `5173`, sinon `5174`, etc.)
 ### 4) Workspace
 
 ![Écran Workspace](docs/screenshots/04-workspace.png)
-
-## Générer / mettre à jour les captures d’écran
-
-1) Démarrer l’app avec l’auth activée :
-
-```bash
-VITE_APP_TOKEN=OPENCLAW_DIRECTOR_DEMO npm run dev
-```
-
-2) Dans un autre terminal, lancer la capture (en adaptant le port si besoin) :
-
-```bash
-BASE_URL=http://127.0.0.1:5174 APP_TOKEN=OPENCLAW_DIRECTOR_DEMO npm run screenshots
-```
-
-Les images sont écrites dans `docs/screenshots/`.
-
