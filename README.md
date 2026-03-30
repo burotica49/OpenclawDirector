@@ -1,13 +1,13 @@
 # OpenClaw Director
 
-**OpenClaw Director** est une interface web (Vite + React) pour piloter OpenClaw : **chat**, **gestion de tâches (kanban)** et **workspace** des agents.
+**OpenClaw Director** is a web interface (Vite + React) to drive OpenClaw: **chat**, **task management (kanban)**, and an agents **workspace**.
 
-- Projet OpenClaw (référence) : [`openclaw/openclaw`](https://github.com/openclaw/openclaw)
+- OpenClaw project (reference): [`openclaw/openclaw`](https://github.com/openclaw/openclaw)
 
-## Prérequis
+## Prerequisites
 
 - Node.js + npm
-- Une gateway OpenClaw accessible (pour les fonctionnalités temps-réel / sessions)
+- An accessible OpenClaw gateway (for realtime features / sessions)
 
 ## Installation
 
@@ -15,33 +15,33 @@
 npm install
 ```
 
-## Démarrage
+## Start
 
 ```bash
 npm run dev
 ```
 
-Par défaut Vite choisit un port disponible (souvent `5173`, sinon `5174`, etc.).
+By default, Vite picks an available port (often `5173`, otherwise `5174`, etc.).
 
 ## Configuration (env)
 
-- **`VITE_APP_TOKEN`** (optionnel) : active l’écran d’authentification par token.
-- **Connexion gateway OpenClaw** : selon votre setup, configurez l’URL WebSocket côté app (voir `src/services/websocket.ts`).
+- **`VITE_APP_TOKEN`** (optional): enables the token authentication screen.
+- **OpenClaw gateway connection**: depending on your setup, configure the WebSocket URL on the app side (see `src/services/websocket.ts`).
 
-## Pages / écrans (avec captures)
+## Pages / screens (with screenshots)
 
-### 1) Authentification
+### 1) Authentication
 
-![Écran Authentification](docs/screenshots/01-auth.png)
+![Authentication screen](docs/screenshots/01-auth.png)
 
 ### 2) Chat
 
-![Écran Chat](docs/screenshots/02-chat.png)
+![Chat screen](docs/screenshots/02-chat.png)
 
-### 3) Kanban (tâches)
+### 3) Kanban (tasks)
 
-![Écran Kanban](docs/screenshots/03-kanban.png)
+![Kanban screen](docs/screenshots/03-kanban.png)
 
 ### 4) Workspace
 
-![Écran Workspace](docs/screenshots/04-workspace.png)
+![Workspace screen](docs/screenshots/04-workspace.png)
