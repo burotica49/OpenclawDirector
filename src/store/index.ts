@@ -142,6 +142,7 @@ interface Store {
 
   loadKanbanFromDb: () => Promise<void>
   createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void
+  updateTask: (taskId: string, patch: Partial<Omit<Task, 'id' | 'createdAt'>>) => void
   updateTaskStatus: (taskId: string, status: TaskStatus) => void
   deleteTask: (taskId: string) => void
   startTask: (taskId: string) => Promise<void>
@@ -268,7 +269,8 @@ export const useStore = create<Store>((set, get) => ({
             const idx = state.tasks.findIndex((t) => t.id === msg.task.id)
             if (idx === -1) return { tasks: [...state.tasks, msg.task] }
             const tasks = [...state.tasks]
-            tasks[idx] = msg.task
+            // Merge pour éviter d’écraser des champs locaux (ex. result/error).
+            tasks[idx] = { ...tasks[idx], ...msg.task }
             return { tasks }
           })
           schedulePersist(get)
@@ -341,7 +343,15 @@ export const useStore = create<Store>((set, get) => ({
             if (taskId) {
               set((s) => ({
                 tasks: s.tasks.map((t) =>
-                  t.id === taskId ? { ...t, status: 'failed', progress: undefined, updatedAt: Date.now() } : t,
+                  t.id === taskId
+                    ? {
+                        ...t,
+                        status: 'failed',
+                        progress: undefined,
+                        error: errorMessage ?? 'Erreur gateway',
+                        updatedAt: Date.now(),
+                      }
+                    : t,
                 ),
                 taskRunByTaskId: Object.fromEntries(
                   Object.entries(s.taskRunByTaskId).filter(([tid]) => tid !== taskId),
@@ -391,14 +401,15 @@ export const useStore = create<Store>((set, get) => ({
 
           if (state === 'final' || state === 'aborted') {
             const finalPiece = textFromGatewayMessage(message)
+            const prevMsgs = get().chatMessagesBySession[sessionKey] ?? []
+            const prevText = prevMsgs.find((m) => m.id === runId)?.content ?? ''
+            const merged =
+              finalPiece.trim() && prevText && !prevText.includes(finalPiece.trim())
+                ? `${prevText}\n${finalPiece}`.trim()
+                : finalPiece.trim() || prevText
             set((s) => {
               const msgs = [...(s.chatMessagesBySession[sessionKey] ?? [])]
               const idx = msgs.findIndex((m) => m.id === runId)
-              const prevText = idx !== -1 ? msgs[idx].content : ''
-              const merged =
-                finalPiece.trim() && prevText && !prevText.includes(finalPiece.trim())
-                  ? `${prevText}\n${finalPiece}`.trim()
-                  : finalPiece.trim() || prevText
               if (idx === -1) {
                 if (merged) {
                   msgs.push({
@@ -433,6 +444,8 @@ export const useStore = create<Store>((set, get) => ({
                         ...t,
                         status: finalStatus,
                         progress: finalStatus === 'done' ? 100 : undefined,
+                        result: finalStatus === 'done' ? merged : t.result,
+                        error: finalStatus === 'failed' ? (t.error ?? 'Tâche interrompue') : undefined,
                         updatedAt: Date.now(),
                       }
                     : t,
@@ -604,6 +617,15 @@ export const useStore = create<Store>((set, get) => ({
       updatedAt: Date.now(),
     }
     set((state) => ({ tasks: [...state.tasks, task] }))
+    schedulePersist(get)
+  },
+
+  updateTask: (taskId, patch) => {
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === taskId ? { ...t, ...patch, updatedAt: Date.now() } : t,
+      ),
+    }))
     schedulePersist(get)
   },
 

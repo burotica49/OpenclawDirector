@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "backoffice": "node server/index.mjs",
     "start": "node server/index.mjs",
+    "start:tunnel": "PORT=3000 WS_PATH=/ws GATEWAY_WS_URL=ws://127.0.0.1:18789 node server/index.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs"
   },
   "dependencies": {

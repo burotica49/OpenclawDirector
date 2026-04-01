@@ -2,10 +2,24 @@ import type { FC } from 'react'
 import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Bot, Trash2, ChevronDown, AlertTriangle, ArrowUp, Minus, ArrowDown, type LucideIcon } from 'lucide-react'
+import {
+  GripVertical,
+  Bot,
+  Trash2,
+  ChevronDown,
+  Pencil,
+  FileText,
+  AlertTriangle,
+  ArrowUp,
+  Minus,
+  ArrowDown,
+  type LucideIcon,
+} from 'lucide-react'
 import type { Task, TaskPriority } from '../../types'
 import { Badge } from '../ui/Badge'
 import { useStore } from '../../store'
+import { EditTaskModal } from './EditTaskModal'
+import { TaskResultModal } from './TaskResultModal'
 
 const priorityMap: Record<TaskPriority, { color: 'red' | 'amber' | 'indigo' | 'slate'; label: string; Icon: LucideIcon }> = {
   critical: { color: 'red',    label: 'Critique', Icon: AlertTriangle },
@@ -21,6 +35,8 @@ interface Props {
 
 export const TaskCard: FC<Props> = ({ task, overlay }) => {
   const [expanded, setExpanded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [resultOpen, setResultOpen] = useState(false)
   const { deleteTask, setActiveSessionKey, setView, startTask } = useStore()
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -34,8 +50,11 @@ export const TaskCard: FC<Props> = ({ task, overlay }) => {
   }
 
   const { color, label: prioLabel, Icon: PrioIcon } = priorityMap[task.priority]
+  const canEdit = !overlay && task.status === 'todo' && !task.startedAt
+  const canViewResult = !overlay && (task.status === 'done' || task.status === 'failed')
 
   return (
+    <>
     <div
       ref={setNodeRef}
       style={overlay ? undefined : style}
@@ -60,6 +79,7 @@ export const TaskCard: FC<Props> = ({ task, overlay }) => {
         {/* Expand */}
         {task.description && (
           <button
+            type="button"
             onClick={() => setExpanded((e) => !e)}
             className="mt-0.5 text-slate-600 hover:text-slate-300 transition-colors flex-shrink-0"
           >
@@ -112,6 +132,17 @@ export const TaskCard: FC<Props> = ({ task, overlay }) => {
 
         <div className="flex-1" />
 
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-indigo-300 text-[10px] px-2 py-1 rounded-md hover:bg-white/5 inline-flex items-center gap-0.5"
+          >
+            <Pencil size={10} />
+            Modifier
+          </button>
+        )}
+
         {task.status === 'todo' && task.agentId && (
           <button
             type="button"
@@ -122,21 +153,41 @@ export const TaskCard: FC<Props> = ({ task, overlay }) => {
           </button>
         )}
 
-        {task.sessionKey && (
-          <button
-            type="button"
-            onClick={() => {
-              void setActiveSessionKey(task.sessionKey ?? null)
-              setView('chat')
-            }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-slate-300 text-[10px] px-2 py-1 rounded-md hover:bg-white/5"
-          >
-            Ouvrir chat
-          </button>
+        {(task.sessionKey || canViewResult) && (
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            {task.sessionKey && (
+              <button
+                type="button"
+                onClick={() => {
+                  void setActiveSessionKey(task.sessionKey ?? null)
+                  setView('chat')
+                }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-slate-300 text-[10px] px-2 py-1 rounded-md hover:bg-white/5"
+              >
+                Ouvrir chat
+              </button>
+            )}
+
+            {canViewResult && (
+              <button
+                type="button"
+                onClick={() => setResultOpen(true)}
+                className={
+                  task.status === 'failed'
+                    ? 'opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-red-300 text-[10px] px-2 py-1 rounded-md hover:bg-white/5 inline-flex items-center gap-0.5'
+                    : 'opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-emerald-300 text-[10px] px-2 py-1 rounded-md hover:bg-white/5 inline-flex items-center gap-0.5'
+                }
+              >
+                <FileText size={10} />
+                {task.status === 'failed' ? 'Voir l’erreur' : 'Voir le résultat'}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Delete */}
         <button
+          type="button"
           onClick={() => deleteTask(task.id)}
           className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-red-400"
         >
@@ -144,5 +195,9 @@ export const TaskCard: FC<Props> = ({ task, overlay }) => {
         </button>
       </div>
     </div>
+
+    {editing && <EditTaskModal task={task} onClose={() => setEditing(false)} />}
+    {resultOpen && <TaskResultModal task={task} onClose={() => setResultOpen(false)} />}
+    </>
   )
 }

@@ -51,6 +51,7 @@ class OpenClawWS {
   private readonly challengeTimeoutMs = 20000
   /** Prêt pour `agents.list` / `chat.send` après `hello-ok`. */
   private authenticated = false
+  private readonly debug = (import.meta.env.VITE_DEBUG_WS ?? '').trim() === '1'
 
   constructor(url: string, token: string) {
     this.url = url
@@ -77,8 +78,12 @@ class OpenClawWS {
     this.connectNonce = null
     this._setStatus('connecting')
     try {
+      if (this.debug) {
+        console.info('[OpenClawWS] connecting', { url: this.url, page: window.location.href })
+      }
       this.ws = new WebSocket(this.url)
-    } catch {
+    } catch (err) {
+      if (this.debug) console.error('[OpenClawWS] new WebSocket() threw', err)
       this._setStatus('error')
       this._scheduleReconnect()
       return
@@ -100,11 +105,13 @@ class OpenClawWS {
       void this._handleRawMessage(String(event.data ?? ''))
     }
 
-    this.ws.onerror = () => {
+    this.ws.onerror = (ev) => {
+      if (this.debug) console.error('[OpenClawWS] onerror', ev)
       this._setStatus('error')
     }
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (ev) => {
+      if (this.debug) console.warn('[OpenClawWS] onclose', { code: ev.code, reason: ev.reason, wasClean: ev.wasClean })
       this._clearChallengeTimer()
       if (this.shouldReconnect) {
         this._setStatus('disconnected')
@@ -391,13 +398,40 @@ function computeDefaultWsUrl(): string {
   // If you need a different host/port, set VITE_WS_URL.
   if (typeof window !== 'undefined' && window.location) {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const path = import.meta.env.VITE_WS_PATH?.trim() || '/'
+    // In production builds, import.meta.env is baked at build time.
+    // Default to /ws so "dist + backoffice proxy" works without extra env.
+    const path = import.meta.env.VITE_WS_PATH?.trim() || '/ws'
     return `${wsProtocol}//${window.location.host}${path.startsWith('/') ? path : `/${path}`}`
   }
   return 'ws://127.0.0.1:18789'
 }
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? computeDefaultWsUrl()
+function isLoopbackHost(hostname: string) {
+  return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1' || hostname === '[::1]'
+}
+
+function resolveWsUrl(): string {
+  const explicit = import.meta.env.VITE_WS_URL?.trim()
+  if (!explicit) return computeDefaultWsUrl()
+
+  // If a prod build accidentally bakes a loopback WS URL, ignore it when the page is remote.
+  try {
+    if (typeof window !== 'undefined' && window.location) {
+      const pageHost = window.location.hostname
+      const explicitHost = new URL(explicit).hostname
+      if (!isLoopbackHost(pageHost) && isLoopbackHost(explicitHost)) {
+        return computeDefaultWsUrl()
+      }
+    }
+  } catch {
+    // If parsing fails, fall back to same-origin default.
+    return computeDefaultWsUrl()
+  }
+
+  return explicit
+}
+
+const WS_URL = resolveWsUrl()
 const WS_TOKEN = import.meta.env.VITE_WS_TOKEN ?? ''
 
 export const openClawWS = new OpenClawWS(WS_URL, WS_TOKEN)

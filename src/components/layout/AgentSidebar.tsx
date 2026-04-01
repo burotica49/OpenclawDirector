@@ -56,10 +56,9 @@ const AgentRow: FC<{ agent: Agent; isActive?: boolean; onClick?: () => void }> =
             <div className="flex items-center gap-1 mt-0.5">
               <Icon size={10} className={color} />
               <span className={`text-[10px] ${color}`}>{label}</span>
-              <span className="text-slate-700">·</span>
-              <span className={`text-[10px] ${tierColor} font-mono truncate max-w-[7rem]`}>
-                {agent.model.replace('claude-', '').split('-').slice(0, 2).join('-')}
-              </span>
+            </div>
+            <div className={`text-[10px] ${tierColor} font-mono truncate max-w-[9.5rem] mt-0.5`}>
+              {agent.model.replace('claude-', '').split('-').slice(0, 2).join('-')}
             </div>
           </div>
           <ChevronRight

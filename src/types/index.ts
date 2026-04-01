@@ -51,6 +51,10 @@ export interface Task {
   /** Date/heure (ms) du démarrage effectif. */
   startedAt?: number
   progress?: number          // 0–100
+  /** Dernière réponse “finale” associée à l’exécution de la tâche. */
+  result?: string
+  /** Message d’erreur si la tâche a échoué. */
+  error?: string
   createdAt: number
   updatedAt: number
   tags?: string[]

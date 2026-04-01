@@ -5,9 +5,13 @@ import { URL } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
 
 const PORT = Number.parseInt(process.env.PORT ?? '3000', 10)
-const HOST = process.env.HOST ?? '127.0.0.1'
+// If HOST is unset, listen on all interfaces (covers IPv4/IPv6 localhost differences).
+const HOST = process.env.HOST
 const WS_PATH = process.env.WS_PATH ?? '/ws'
 const GATEWAY_WS_URL = process.env.GATEWAY_WS_URL ?? 'ws://127.0.0.1:18789'
+// The OpenClaw gateway enforces origin allowlists for the Control UI.
+// When proxying, we intentionally present as the local gateway origin by default.
+const GATEWAY_ORIGIN = process.env.GATEWAY_ORIGIN ?? 'http://127.0.0.1:18789'
 const DIST_DIR = process.env.DIST_DIR ?? path.join(process.cwd(), 'dist')
 
 function contentTypeFor(filePath) {
@@ -99,8 +103,16 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server, path: WS_PATH })
 
-wss.on('connection', (clientWs) => {
-  const gatewayWs = new WebSocket(GATEWAY_WS_URL)
+wss.on('connection', (clientWs, req) => {
+  const clientOrigin = req.headers.origin
+  const gatewayWs = new WebSocket(GATEWAY_WS_URL, {
+    headers: {
+      // Default behavior: pass the gateway's own origin to satisfy its allowlist.
+      // If you prefer to allow the tunnel origin on the gateway, set GATEWAY_ORIGIN to the external origin.
+      Origin: GATEWAY_ORIGIN,
+      ...(clientOrigin ? { 'X-Forwarded-Origin': clientOrigin } : null),
+    },
+  })
 
   const safeClose = (ws) => {
     try {
@@ -128,8 +140,12 @@ wss.on('connection', (clientWs) => {
 })
 
 server.listen(PORT, HOST, () => {
+  const addr = server.address()
+  const prettyHost =
+    addr && typeof addr === 'object' ? (addr.address === '::' ? '0.0.0.0' : addr.address) : HOST ?? '0.0.0.0'
+  const prettyPort = addr && typeof addr === 'object' ? addr.port : PORT
   // eslint-disable-next-line no-console
   console.log(
-    `[director-backoffice] listening on http://${HOST}:${PORT} (dist: ${DIST_DIR}, ws: ${WS_PATH} -> ${GATEWAY_WS_URL})`,
+    `[director-backoffice] listening on http://${prettyHost}:${prettyPort} (dist: ${DIST_DIR}, ws: ${WS_PATH} -> ${GATEWAY_WS_URL})`,
   )
 })
