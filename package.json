@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "backoffice": "node server/index.mjs",
+    "start": "node server/index.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "sql.js": "^1.14.1",
+    "ws": "^8.18.3",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

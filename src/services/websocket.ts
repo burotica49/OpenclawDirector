@@ -386,7 +386,18 @@ class OpenClawWS {
   }
 }
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://127.0.0.1:18789'
+function computeDefaultWsUrl(): string {
+  // For tunnels / remote access, default to same-origin WebSocket.
+  // If you need a different host/port, set VITE_WS_URL.
+  if (typeof window !== 'undefined' && window.location) {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const path = import.meta.env.VITE_WS_PATH?.trim() || '/'
+    return `${wsProtocol}//${window.location.host}${path.startsWith('/') ? path : `/${path}`}`
+  }
+  return 'ws://127.0.0.1:18789'
+}
+
+const WS_URL = import.meta.env.VITE_WS_URL ?? computeDefaultWsUrl()
 const WS_TOKEN = import.meta.env.VITE_WS_TOKEN ?? ''
 
 export const openClawWS = new OpenClawWS(WS_URL, WS_TOKEN)

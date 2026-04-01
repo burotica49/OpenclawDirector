@@ -28,6 +28,32 @@ By default, Vite picks an available port (often `5173`, otherwise `5174`, etc.).
 - **`VITE_APP_TOKEN`** (optional): enables the token authentication screen.
 - **OpenClaw gateway connection**: depending on your setup, configure the WebSocket URL on the app side (see `src/services/websocket.ts`).
 
+## Cloudflare Tunnel (sans exposer la gateway)
+
+Objectif: **ne jamais exposer** `ws://127.0.0.1:18789` au public, tout en rendant l’UI accessible via `cloudflared`.
+
+- **Principe**: un petit “backoffice” local sert `dist/` (UI) et expose `wss://<ton-domaine>/ws`, puis **proxy** en interne vers la gateway locale.
+
+### 1) Build + lancer le backoffice
+
+```bash
+npm install
+npm run build
+HOST=127.0.0.1 PORT=3000 WS_PATH=/ws GATEWAY_WS_URL=ws://127.0.0.1:18789 npm run start
+```
+
+### 2) Configurer le front pour utiliser le proxy
+
+Dans `.env` (ou `.env.production` / `.env.preview` selon ton usage) :
+
+```env
+VITE_WS_PATH=/ws
+```
+
+### 3) Tunnel Cloudflare
+
+Fais pointer ton tunnel vers `http://127.0.0.1:3000` (HTTP + WebSocket).
+
 ## Pages / screens (with screenshots)
 
 ### 1) Authentication
