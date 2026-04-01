@@ -18,6 +18,12 @@ npm install
 ## Start
 
 ```bash
+cp .env.example .env
+```
+
+Edit .env 
+
+```bash
 npm run dev
 ```
 
